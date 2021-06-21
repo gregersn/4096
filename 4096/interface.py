@@ -1,39 +1,51 @@
 #!/usr/bin/env python3
-import engine, sys, uuid, random, subprocess, socket, os, time
+import engine
+import sys
+import uuid
+import random
+import subprocess
+import socket
+import os
+import time
 import platform
 
 if len(sys.argv) < 3:
-	sys.stderr.write("Usage: interface.py <randomseed> <executable>\n")
-	sys.exit()
+    sys.stderr.write("Usage: interface.py <randomseed> <executable>\n")
+    sys.exit()
 
 # set up seed from arguments
 random.seed(sys.argv[1])
 
 # helpers for writing and reading to the socket connection
+
+
 def write(conn, str):
-	conn.send(str.encode("utf-8"))
+    conn.send(str.encode("utf-8"))
+
 
 def read(conn):
-	return conn.recv(1024).decode("utf-8").strip()
+    return conn.recv(1024).decode("utf-8").strip()
+
 
 identifier = ""
+s_path = ""
 
 if platform.system() == 'Windows':
-	print "Must connect differently"
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.bind(("", 8765))
-	print sys.argv[2]
-	process = subprocess.Popen([sys.executable, sys.argv[2], '8765'])
+    print("Must connect differently")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 8765))
+    print(sys.argv[2])
+    process = subprocess.Popen([sys.executable, sys.argv[2], '8765'])
 else:
-	# create local unix socket for communication with child
-	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-	s.settimeout(2)
-	identifier = str(uuid.uuid4())
-	s_path = "/tmp/4096-" + identifier
-	s.bind(s_path)
+    # create local unix socket for communication with child
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(2)
+    identifier = str(uuid.uuid4())
+    s_path = "/tmp/4096-" + identifier
+    s.bind(s_path)
 
-	# launch child
-	process = subprocess.Popen([sys.argv[2], s_path])
+    # launch child
+    process = subprocess.Popen([sys.argv[2], s_path])
 s.listen(1)
 conn, addr = s.accept()
 
@@ -49,29 +61,29 @@ sys.stderr.write("Identifier: " + identifier + "\n")
 write(conn, game.to_string())
 
 try:
-	while conn:
-		c = read(conn)
+    while conn:
+        c = read(conn)
 
-		if c == 'u':
-			game.up()
-		elif c == 'd':
-			game.down()
-		elif c == 'l':
-			game.left()
-		elif c == 'r':
-			game.right()
+        if c == 'u':
+            game.up()
+        elif c == 'd':
+            game.down()
+        elif c == 'l':
+            game.left()
+        elif c == 'r':
+            game.right()
 
-		write(conn, game.to_string())
+        write(conn, game.to_string())
 
-		move_count += 1
+        move_count += 1
 
-		if game.is_board_locked():
-			write(conn, "FIN " + str(game.score) + "\n")
+        if game.is_board_locked():
+            write(conn, "FIN " + str(game.score) + "\n")
 except (socket.timeout):
-	sys.stderr.write(" * Socket timed out.\n")
-#except (BrokenPipeError, ConnectionResetError):
+    sys.stderr.write(" * Socket timed out.\n")
+# except (BrokenPipeError, ConnectionResetError):
 except:
-	pass
+    pass
 
 # give score
 sys.stderr.write("Score: " + str(game.score) + "\n")
@@ -80,4 +92,5 @@ sys.stderr.write("Moves: " + str(move_count) + "\n")
 # clean up
 process.terminate()
 if not platform.system() == 'Windows':
-	os.remove(s_path)
+    if s_path:
+        os.remove(s_path)
